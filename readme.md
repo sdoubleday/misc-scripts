@@ -1,0 +1,1 @@
+An assortment of scripts I have ever found useful. Mostly borrowed or adapted - follow the links in the code if you want to know more.
