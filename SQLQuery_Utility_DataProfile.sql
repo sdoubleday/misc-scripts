@@ -1,7 +1,7 @@
 SELECT 'SELECT * INTO #DataProfile FROM ( '
 UNION ALL
 SELECT
-'SELECT [''' + COLUMN_NAME + '''] AS COLUMN_NAME' +
+'SELECT ''' + COLUMN_NAME + ''' AS COLUMN_NAME' +
 ', CAST(MAX([' + COLUMN_NAME + ']) AS NVARCHAR(500) ) AS MaxValue' +
 ', CAST(MIN([' + COLUMN_NAME + ']) AS NVARCHAR(500) ) AS MinValue' +
 ', COUNT([' + COLUMN_NAME + ']) AS CountValue' +
