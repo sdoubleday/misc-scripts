@@ -55,6 +55,7 @@ SELECT
 ', COUNT(DISTINCT [' + COLUMN_NAME + ']) AS DistinctCount' +
 ', COUNT( CASE WHEN [' + COLUMN_NAME + '] IS NULL THEN 1 ELSE NULL END) AS CountNulls' +
 ', (SELECT COUNT(1) + 1 FROM ' + @TempTable + ' WHERE COLUMN_NAME = ''' + COLUMN_NAME + ''') AS dataProfileID' +
+', SYSDATETIME() AS dataProfileDate' +
 ' FROM [' + TABLE_SCHEMA + '].[' + TABLE_NAME + '];'
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE DATA_TYPE NOT IN ('image','rowversion','timestamp','bit')
@@ -72,6 +73,8 @@ SELECT
 ', COUNT([' + COLUMN_NAME + ']) AS CountValue' +
 ', COUNT(DISTINCT [' + COLUMN_NAME + ']) AS DistinctCount' +
 ', COUNT( CASE WHEN [' + COLUMN_NAME + '] IS NULL THEN 1 ELSE NULL END) AS CountNulls' +
+', (SELECT COUNT(1) + 1 FROM ' + @TempTable + ' WHERE COLUMN_NAME = ''' + COLUMN_NAME + ''') AS dataProfileID' +
+', SYSDATETIME() AS dataProfileDate' +
 ' FROM [' + TABLE_SCHEMA + '].[' + TABLE_NAME + '];'
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE DATA_TYPE ='bit'
