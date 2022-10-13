@@ -1,7 +1,10 @@
-﻿<#
+﻿
+#region function GetMdxFromExcelPivotTable {
+function GetMdxFromExcelPivotTable {
+<#
 .SYNOPSIS
 Open an .xlsx file with excel (silently), get the MDX query used by the Pivot Table on the active sheet, return that, and close the workbook.
-#>>
+#>
 
 PARAM ([Parameter(Mandatory= $true,ValueFromPipelineByPropertyName= $true)][ValidateNotNullorEmpty()][ValidateScript({
             IF (Test-Path -PathType leaf -Path $_ ) 
@@ -20,3 +23,6 @@ $excelWorkBook.Close();
 return $output;
 }
 END {}
+
+}
+#endregion function GetMdxFromExcelPivotTable {
