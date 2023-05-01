@@ -1,21 +1,29 @@
-DECLARE @Table_Name NVARCHAR(128) = N'ReplaceMe';
-DECLARE @ColumnListFilter NVARCHAR(4000) = NULL; /* 'This,CommaSeparatedList,%Allows,Wild%,Card%Search' */
-DECLARE @Rerun BIT = 0;
-DECLARE @Table_Schema NVARCHAR(128) = N'dbo';
+CREATE PROCEDURE dbo.sp_dataprofile
 
-DECLARE @DecimalCutoffForLowCardinality_DistinctOverCount NVARCHAR(128) = N'0.0001';
-DECLARE @DecimalCutoffForMediumCardinality_DistinctOverCount NVARCHAR(128) = N'0.001';
+ @Table_Name NVARCHAR(128) = N'ReplaceMe'
+,@ColumnListFilter NVARCHAR(4000) = NULL /* 'This,CommaSeparatedList,%Allows,Wild%,Card%Search' */
+,@Rerun BIT = 0
+,@Table_Schema NVARCHAR(128) = N'dbo'
 
-DECLARE @DestinationDatabase SYSNAME = 'tempdb'; /*We are creating tables in tempdb - sure, they vanish on reboot, and if you don't want that, redirect this.*/
-DECLARE @DestinationSchema SYSNAME = 'dbo';
+,@DecimalCutoffForLowCardinality_DistinctOverCount NVARCHAR(128) = N'0.0001'
+,@DecimalCutoffForMediumCardinality_DistinctOverCount NVARCHAR(128) = N'0.001'
 
-DECLARE @help BIT = 0;
+,@DestinationDatabase SYSNAME = 'tempdb' /*We are creating tables in tempdb - sure, they vanish on reboot, and if you don't want that, redirect this.*/
+,@DestinationSchema SYSNAME = 'dbo'
+
+,@help BIT = 0
+AS
 
 IF @help = 1
 BEGIN
 PRINT 'Runs a data profile of the target table. Saves it, by default, to a table in tempdb (that does not persist past a restart of SQL Server).';
 PRINT 'Specify @Rerun = 1 to re-profile the table, if the profile already exists.';
 PRINT 'Specify @ColumnListFilter = ''CommaSeparatedList,%Allows,Wild%,Card%Search'' to get back a subset of columns.';
+PRINT '';
+PRINT 'EXECUTE dbo.sp_dataprofile ''yourtable'';';
+PRINT 'EXECUTE dbo.sp_dataprofile ''yourtable'', ''%ID'' /*just columns that end with ID*/;';
+PRINT 'EXECUTE dbo.sp_dataprofile ''yourtable'', @Rerun = 1 /*if the data changed since last time*/;';
+PRINT 'EXECUTE dbo.sp_dataprofile ''yourtable'', @Table_Schema = ''yourShema'';';
 RETURN;
 END
 
