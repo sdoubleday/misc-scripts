@@ -1,18 +1,35 @@
 DECLARE @Table_Name NVARCHAR(128) = N'ReplaceMe';
+DECLARE @ColumnListFilter NVARCHAR(4000) = NULL; /* 'This,CommaSeparatedList,%Allows,Wild%,Card%Search' */
+DECLARE @Rerun BIT = 0;
 DECLARE @Table_Schema NVARCHAR(128) = N'dbo';
 
 DECLARE @DecimalCutoffForLowCardinality_DistinctOverCount NVARCHAR(128) = N'0.0001';
 DECLARE @DecimalCutoffForMediumCardinality_DistinctOverCount NVARCHAR(128) = N'0.001';
 
-DECLARE @DestinationDatabase SYSNAME = 'tempdb';
+DECLARE @DestinationDatabase SYSNAME = 'tempdb'; /*We are creating tables in tempdb - sure, they vanish on reboot, and if you don't want that, redirect this.*/
 DECLARE @DestinationSchema SYSNAME = 'dbo';
 
-DECLARE @TempTable NVARCHAR(128) = @DestinationDatabase + N'.' + @DestinationSchema + N'.DataProfile_' + @Table_Schema + N'_' + @Table_Name;
+DECLARE @help BIT = 0;
+
+IF @help = 1
+BEGIN
+PRINT 'Runs a data profile of the target table. Saves it, by default, to a table in tempdb (that does not persist past a restart of SQL Server).';
+PRINT 'Specify @Rerun = 1 to re-profile the table, if the profile already exists.';
+PRINT 'Specify @ColumnListFilter = ''CommaSeparatedList,%Allows,Wild%,Card%Search'' to get back a subset of columns.';
+RETURN;
+END
+
+DECLARE @OutputTable NVARCHAR(128) = @DestinationDatabase + N'.' + @DestinationSchema + N'.DataProfile_' + @Table_Schema + N'_' + @Table_Name;
+
+IF OBJECT_ID(@OutputTable) IS NULL
+BEGIN
+    SET @Rerun = 1;
+END
 
 DECLARE @SQL NVARCHAR(4000) = '';
 DECLARE myCursor CURSOR FOR
 SELECT 
-'CREATE TABLE ' + @TempTable + '
+'CREATE TABLE ' + @OutputTable + '
 (
      COLUMN_NAME SYSNAME NOT NULL
     ,DATA_TYPE SYSNAME NOT NULL
@@ -41,12 +58,13 @@ SELECT
     END
 
 );'
-WHERE OBJECT_ID(@TempTable,'U') IS NULL
+WHERE OBJECT_ID(@OutputTable,'U') IS NULL
+AND @Rerun = 1
 
 UNION ALL
 
 SELECT
-'INSERT INTO ' + @TempTable + ' SELECT ''' + COLUMN_NAME + ''' AS COLUMN_NAME' +
+'INSERT INTO ' + @OutputTable + ' SELECT ''' + COLUMN_NAME + ''' AS COLUMN_NAME' +
 ',''' + DATA_TYPE + ''' AS DATA_TYPE' +
 ',' + CAST(ORDINAL_POSITION AS NVARCHAR(4000)) + ' AS ORDINAL_POSITION' +
 ', CAST(MAX([' + COLUMN_NAME + ']) AS NVARCHAR(500) ) AS MaxValue' +
@@ -54,18 +72,19 @@ SELECT
 ', COUNT([' + COLUMN_NAME + ']) AS CountValue' +
 ', COUNT(DISTINCT [' + COLUMN_NAME + ']) AS DistinctCount' +
 ', COUNT( CASE WHEN [' + COLUMN_NAME + '] IS NULL THEN 1 ELSE NULL END) AS CountNulls' +
-', (SELECT COUNT(1) + 1 FROM ' + @TempTable + ' WHERE COLUMN_NAME = ''' + COLUMN_NAME + ''') AS dataProfileID' +
+', (SELECT COUNT(1) + 1 FROM ' + @OutputTable + ' WHERE COLUMN_NAME = ''' + COLUMN_NAME + ''') AS dataProfileID' +
 ', SYSDATETIME() AS dataProfileDate' +
 ' FROM [' + TABLE_SCHEMA + '].[' + TABLE_NAME + '];'
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE DATA_TYPE NOT IN ('image','rowversion','timestamp','bit')
 AND TABLE_SCHEMA LIKE @Table_Schema
 AND TABLE_NAME LIKE @Table_Name
+AND @Rerun = 1
 
 UNION ALL
 
 SELECT
-'INSERT INTO ' + @TempTable + ' SELECT ''' + COLUMN_NAME + ''' AS COLUMN_NAME' +
+'INSERT INTO ' + @OutputTable + ' SELECT ''' + COLUMN_NAME + ''' AS COLUMN_NAME' +
 ',''' + DATA_TYPE + ''' AS DATA_TYPE' +
 ',' + CAST(ORDINAL_POSITION AS NVARCHAR(4000)) + ' AS ORDINAL_POSITION' +
 ', CAST(MAX(CAST([' + COLUMN_NAME + '] AS INT)) AS NVARCHAR(500) ) AS MaxValue' +
@@ -73,18 +92,34 @@ SELECT
 ', COUNT([' + COLUMN_NAME + ']) AS CountValue' +
 ', COUNT(DISTINCT [' + COLUMN_NAME + ']) AS DistinctCount' +
 ', COUNT( CASE WHEN [' + COLUMN_NAME + '] IS NULL THEN 1 ELSE NULL END) AS CountNulls' +
-', (SELECT COUNT(1) + 1 FROM ' + @TempTable + ' WHERE COLUMN_NAME = ''' + COLUMN_NAME + ''') AS dataProfileID' +
+', (SELECT COUNT(1) + 1 FROM ' + @OutputTable + ' WHERE COLUMN_NAME = ''' + COLUMN_NAME + ''') AS dataProfileID' +
 ', SYSDATETIME() AS dataProfileDate' +
 ' FROM [' + TABLE_SCHEMA + '].[' + TABLE_NAME + '];'
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE DATA_TYPE ='bit'
 AND TABLE_SCHEMA LIKE @Table_Schema
 AND TABLE_NAME LIKE @Table_Name
+AND @Rerun = 1
 
 UNION ALL
 SELECT '; SELECT *
-FROM ' + @TempTable + '
-WHERE dataProfileID = (SELECT MAX(dataProfileID) FROM ' + @TempTable + ')
+FROM ' + @OutputTable + '
+WHERE dataProfileID = (SELECT MAX(dataProfileID) FROM ' + @OutputTable + ')'
+
+UNION ALL
+SELECT COALESCE (
+    'AND (
+    COLUMN_NAME LIKE '''
+    + STRING_AGG ( VALUE, '''
+    OR COLUMN_NAME LIKE '''
+    )
+    + ''')'
+,'')
+FROM string_split(@ColumnListFilter, ',')
+
+UNION ALL
+SELECT
+'
 ORDER BY
 ORDINAL_POSITION, /*or comment out this line to sort by simple data classification*/
 SimpleDataClassification
