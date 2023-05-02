@@ -110,9 +110,13 @@ AND TABLE_NAME LIKE @Table_Name
 AND @Rerun = 1
 
 UNION ALL
+SELECT
+STRING_AGG( [QueryInPieces], '
+')
+FROM (
 SELECT '; SELECT *
 FROM ' + @OutputTable + '
-WHERE dataProfileID = (SELECT MAX(dataProfileID) FROM ' + @OutputTable + ')'
+WHERE dataProfileID = (SELECT MAX(dataProfileID) FROM ' + @OutputTable + ')' AS [QueryInPieces]
 
 UNION ALL
 SELECT COALESCE (
@@ -122,16 +126,16 @@ SELECT COALESCE (
     OR COLUMN_NAME LIKE '''
     )
     + ''')'
-,'')
+,'') AS [QueryInPieces]
 FROM string_split(@ColumnListFilter, ',')
 
 UNION ALL
 SELECT
-'
-ORDER BY
+'ORDER BY
 ORDINAL_POSITION, /*or comment out this line to sort by simple data classification*/
 SimpleDataClassification
-;'
+;' AS [QueryInPieces]
+) AS [SelectStatement_InPieces]
 ;
 
 OPEN myCursor;
